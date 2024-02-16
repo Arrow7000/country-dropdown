@@ -1,0 +1,116 @@
+/* Resets */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+/* App styling */
+
+:root {
+  --buttonHeight: 26px;
+  --emptyButtonWidth: 150px;
+
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  height: 300px;
+  max-width: 500px;
+  width: 100%;
+  padding: 0 25px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+
+  height: var(--buttonHeight);
+  font-size: 1rem;
+
+  border-width: 1px;
+  border-style: solid;
+  border-color: #00000033;
+  border-radius: 3px;
+  min-width: 150px;
+  cursor: pointer;
+  padding: 0 10px;
+  background-color: white;
+  &:hover {
+    border-color: #00000055;
+  }
+
+  .button-selected {
+    display: flex;
+    gap: 10px;
+    flex-grow: 1;
+  }
+}
+
+.dropdown-position-container {
+  position: relative;
+}
+
+.dropdown-panel {
+  position: absolute;
+  top: 3px;
+  box-shadow: 0px 3px 18px 0px #00000026, 0px 0px 0px 1px #00000014;
+  min-width: 230px;
+  max-width: 260px;
+  border-radius: 2px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.option {
+  white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  cursor: pointer;
+  /* height: 18px; */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  &.selected {
+    background-color: #ffdbb3;
+  }
+
+  &:hover,
+  &:focus {
+    background-color: #ffdbb355;
+  }
+
+  .option-text {
+    white-space: nowrap;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+  }
+
+  .option-count {
+    color: #00000085;
+  }
+}

@@ -1,7 +1,12 @@
 (library
  (name app)
  (modes melange)
- (libraries bindings cma_configuration components reason-react)
+ (libraries
+  bindings
+  cma_configuration
+  components
+  reason-react
+  melange-fetch
+  melange-json)
  (preprocess
   (pps melange.ppx reason-react-ppx)))
-
