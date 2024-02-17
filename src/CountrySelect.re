@@ -25,11 +25,7 @@ module CountrySelect = {
     Js.Promise.(
       Fetch.fetch(countriesUrl)
       |> then_(Fetch.Response.json)
-      |> then_(json => {
-           Js.log(json);
-
-           countryArrayDecoder(json) |> resolve;
-         })
+      |> then_(json => {countryArrayDecoder(json) |> resolve})
     );
 
   let buttonHeight = 26;
@@ -65,7 +61,7 @@ module CountrySelect = {
                resolve();
              })
           |> catch(_ => {
-               //  setCountriesList(_ => None);
+               // @TODO: might want to use a Result type instead of an option here – or even better, something like the Elm RemoteData type
                resolve()
              })
         )
@@ -108,6 +104,43 @@ module CountrySelect = {
 
     let numFormat = numberFormatter.format;
 
+    let rowHeight = 28;
+
+    let rowRenderer: VirtualizedList.rowRenderer =
+      ({key, index, style, _}) => {
+        switch (countriesList) {
+        | Some(list) =>
+          let countryEntry = list[index];
+
+          <div
+            key
+            style
+            tabIndex=(-1)
+            className={
+              "option "
+              ++ (countryEntry.value == selectedValue ? "selected" : "")
+            }
+            key={countryEntry.value}
+            onClick={_ => {
+              onChange(Some(countryEntry.value));
+              setIsOpen(_ => false);
+            }}>
+            <>
+              <div className="option-flag">
+                <span className={"fi fib fi-" ++ countryEntry.value} />
+              </div>
+              <p className="option-text">
+                {React.string(countryEntry.label)}
+              </p>
+              <p className="option-count">
+                {countryEntry.count |> numFormat |> React.string}
+              </p>
+            </>
+          </div>;
+        | None => React.null
+        };
+      };
+
     <div className={"countrySelect " ++ className}>
       <button
         className="button"
@@ -121,7 +154,9 @@ module CountrySelect = {
         {switch (selectedEntry) {
          | Some(entry) =>
            <div className="button-selected">
-             <span className={"fi fi-" ++ entry.value} />
+             <div className="button-flag">
+               <span className={"fi fib fi-" ++ entry.value} />
+             </div>
              {React.string(entry.label)}
            </div>
          | None => <div />
@@ -133,31 +168,13 @@ module CountrySelect = {
            ? <div className="dropdown-panel">
                {switch (countriesList) {
                 | Some(list) =>
-                  list
-                  |> Array.map(countryEntry =>
-                       <div
-                         className={
-                           "option "
-                           ++ (
-                             countryEntry.value == selectedValue
-                               ? "selected" : ""
-                           )
-                         }
-                         key={countryEntry.value}
-                         onClick={_ => {
-                           onChange(Some(countryEntry.value));
-                           setIsOpen(_ => false);
-                         }}>
-                         <span className={"fi fi-" ++ countryEntry.value} />
-                         <p className="option-text">
-                           {React.string(countryEntry.label)}
-                         </p>
-                         <p className="option-count">
-                           {countryEntry.count |> numFormat |> React.string}
-                         </p>
-                       </div>
-                     )
-                  |> React.array
+                  <VirtualizedList
+                    rowRenderer
+                    rowCount={Array.length(list)}
+                    width=230
+                    rowHeight
+                    height={min(400, Array.length(list) * rowHeight)}
+                  />
                 | None =>
                   // @TODO: make this look good
                   <div className="no-results">
