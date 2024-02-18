@@ -7,6 +7,7 @@
   components
   reason-react
   melange-fetch
-  melange-json)
+  melange-json
+  melange-webapi)
  (preprocess
   (pps melange.ppx reason-react-ppx)))

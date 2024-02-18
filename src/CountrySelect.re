@@ -21,7 +21,7 @@ module CountrySelect = {
     Js.Promise.(
       Fetch.fetch(countriesUrl)
       |> then_(Fetch.Response.json)
-      |> then_(json => {countryArrayDecoder(json) |> resolve})
+      |> then_(json => countryArrayDecoder(json) |> resolve)
     );
 
   let rowHeight = 28;
@@ -171,6 +171,8 @@ module CountrySelect = {
       |> Option.map(entry => entry.value)
       |> Option.value(~default="");
 
+    let elRef = Helpers.useClickOutside(_ => closeDropdown(), [||]);
+
     // @TODO: now that we change the focused item every time we mouse over one of the options, we should probably optimise this so we're not running this effect on every render. Probably doing something like https://stackoverflow.com/questions/63224151/how-can-i-access-state-in-an-useeffect-without-re-firing-the-useeffect
     React.useEffect2(
       () => {
@@ -179,6 +181,10 @@ module CountrySelect = {
             let key = ReactEvent.Keyboard.key(event);
 
             switch (key) {
+            | "Escape" =>
+              closeDropdown();
+              ReactEvent.Keyboard.preventDefault(event);
+
             | "ArrowUp" =>
               setFocusedInDropdownIndex(curr => curr - 1);
               ReactEvent.Keyboard.preventDefault(event);
@@ -249,7 +255,9 @@ module CountrySelect = {
         </div>;
       };
 
-    <div className={"country-select " ++ className}>
+    <div
+      className={"country-select " ++ className}
+      ref={ReactDOM.Ref.domRef(elRef)}>
       <button
         className="button"
         onClick={_ => setIsOpen(open_ => !open_)}
