@@ -12,4 +12,5 @@ export default defineConfig({
       plugins: [fixReactVirtualized],
     },
   },
+  server: { port: 5173, open: true },
 });

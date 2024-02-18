@@ -17,11 +17,27 @@ module CountrySelect = {
 
   let countryArrayDecoder = Json.Decode.array(entryDecoder);
 
+  // Make API request for the country entries and sort by count descending
   let requestEntries = () =>
     Js.Promise.(
       Fetch.fetch(countriesUrl)
       |> then_(Fetch.Response.json)
-      |> then_(json => countryArrayDecoder(json) |> resolve)
+      |> then_(json => {
+           let sorted =
+             json
+             |> countryArrayDecoder
+             |> Array.to_list
+             |> List.sort(
+                  (a, b) => {
+                    let aCount = a.count;
+                    let bCount = b.count;
+                    // We're displaying this with the highest count at the top
+                    aCount < bCount ? 1 : aCount > bCount ? (-1) : 0;
+                  },
+                  _,
+                );
+           sorted |> resolve;
+         })
     );
 
   let rowHeight = 28;
@@ -57,7 +73,7 @@ module CountrySelect = {
     let (focusedInDropdownIndex, setFocusedInDropdownIndex) =
       React.useState(_ => 0);
 
-    // We do this so we can avoid running the effect that sets the keyboard event handlers every time we hover over a different option. Inspired by: https://stackoverflow.com/a/63261270/3229534
+    // We need this so we can avoid running the effect that sets the keyboard event handlers every time we hover over a different option. Inspired by: https://stackoverflow.com/a/63261270/3229534
     let focusedIndexRef = React.useRef(focusedInDropdownIndex);
 
     // Keep the ref in sync with state
@@ -81,46 +97,6 @@ module CountrySelect = {
       onChange(Some(entry.value));
       closeDropdown();
     };
-
-    React.useEffect1(
-      () => {
-        setCountriesList(_ => RemoteData.Loading);
-
-        Js.Promise.(
-          requestEntries()
-          |> then_(array => {
-               let list = array |> Array.to_list;
-
-               let sorted =
-                 List.sort(
-                   (a, b) => {
-                     let aCount = a.count;
-                     let bCount = b.count;
-                     // We're displaying this with the highest count at the top
-                     aCount < bCount ? 1 : aCount > bCount ? (-1) : 0;
-                   },
-                   list,
-                 );
-
-               setCountriesList(_ => RemoteData.Success(sorted));
-               resolve();
-             })
-          |> catch(_ => {
-               // @TODO: might want to use a Result type instead of an option here – or even better, something like the Elm RemoteData type
-
-               setCountriesList(_ =>
-                 RemoteData.Fail("Request or parsing failed")
-               );
-               resolve();
-             })
-        )
-        |> ignore;
-
-        None;
-      },
-      // Only run on initial mount
-      [||],
-    );
 
     // The full entry of the currently set country, as set in the country prop
     let currentCountryEntry: option(countryEntry) =
@@ -171,14 +147,38 @@ module CountrySelect = {
 
     let filteredListLen = List.length(filteredList);
 
-    // For easier comparisons
-    let selectedValue =
-      currentCountryEntry
-      |> Option.map(entry => entry.value)
-      |> Option.value(~default="");
-
+    // Hook to close the dropdown on outside click
     let elRef = Helpers.useClickOutside(_ => closeDropdown(), [||]);
 
+    // Fetch the list of countries
+    React.useEffect1(
+      () => {
+        setCountriesList(_ => RemoteData.Loading);
+
+        Js.Promise.(
+          requestEntries()
+          |> then_(list => {
+               setCountriesList(_ => RemoteData.Success(list));
+               resolve();
+             })
+          |> catch(_ => {
+               // @TODO: might want to use a Result type instead of an option here – or even better, something like the Elm RemoteData type
+
+               setCountriesList(_ =>
+                 RemoteData.Fail("Request or parsing failed")
+               );
+               resolve();
+             })
+        )
+        |> ignore;
+
+        None;
+      },
+      // Only run on initial mount
+      [||],
+    );
+
+    // Attach keyboard event handlers
     React.useEffect3(
       () => {
         let keypressHandler: ReactEvent.Keyboard.t => unit =
@@ -243,6 +243,12 @@ module CountrySelect = {
       },
       (filteredList, filteredListLen, isOpen),
     );
+
+    // For easier comparisons
+    let selectedValue =
+      currentCountryEntry
+      |> Option.map(entry => entry.value)
+      |> Option.value(~default="");
 
     let boundedFocusIndex =
       boundToListLenIndex(focusedInDropdownIndex, filteredListLen);
