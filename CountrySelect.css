@@ -1,3 +1,7 @@
+.country-select {
+  --text-color: #333333;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -6,6 +10,7 @@
 
   height: 26px;
   font-size: 1rem;
+  color: var(--text-color);
 
   border-width: 1px;
   border-style: solid;
@@ -51,10 +56,12 @@
   align-items: center;
   gap: 2px;
   padding: 0 10px;
+  margin-top: 4px;
 }
 
 .search-icon {
   padding: 2px;
+  color: var(--text-color);
 }
 
 .search-field-input {
@@ -98,10 +105,24 @@
     overflow-x: hidden;
     text-overflow: ellipsis;
     flex-grow: 1;
+    color: var(--text-color);
   }
 
   .option-count {
     color: #00000085;
+  }
+}
+
+.loading-panel,
+.error-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #00000085;
+  width: 230px;
+
+  p {
+    margin: 50px 0;
   }
 }
 

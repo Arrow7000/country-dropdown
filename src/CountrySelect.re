@@ -151,19 +151,17 @@ module CountrySelect = {
             switch (searchStr) {
             | "" => list
             | _ =>
-              List.filter(
-                countryEntry => {
-                  let containsStr = str =>
-                    Js.String.includes(
-                      String.lowercase_ascii(searchStr),
-                      String.lowercase_ascii(str),
-                    );
+              list
+              |> List.filter(countryEntry => {
+                   let containsStr = str =>
+                     Js.String.includes(
+                       String.lowercase_ascii(searchStr),
+                       String.lowercase_ascii(str),
+                     );
 
-                  containsStr(countryEntry.label)
-                  || containsStr(countryEntry.value);
-                },
-                list,
-              )
+                   containsStr(countryEntry.label)
+                   || containsStr(countryEntry.value);
+                 })
             }
           | _ => []
           }
@@ -304,31 +302,45 @@ module CountrySelect = {
       <div className="dropdown-position-container">
         {isOpen
            ? <div className="dropdown-panel">
-               <div className="search-field">
-                 <div className="search-icon">
-                   <i className="fa-solid fa-magnifying-glass" />
-                 </div>
-                 <input
-                   autoFocus=true
-                   className="search-field-input"
-                   placeholder="Search"
-                   type_="text"
-                   onChange={e =>
-                     setSearchStr(_ => ReactEvent.Form.target(e)##value)
-                   }
-                   value=searchStr
-                 />
-               </div>
-               <div className="search-list-separator" />
-               <VirtualizedList
-                 rowRenderer
-                 rowCount=filteredListLen
-                 width=230
-                 rowHeight
-                 height={min(400, filteredListLen * rowHeight)}
-                 scrollToIndex=boundedFocusIndex
-                 overscanRowCount=25
-               />
+               {switch (countriesList) {
+                | RemoteData.NotAsked
+                | RemoteData.Loading =>
+                  <div className="loading-panel">
+                    <p> {React.string("Loading countries list...")} </p>
+                  </div>
+                | RemoteData.Success(_) =>
+                  <>
+                    <div className="search-field">
+                      <div className="search-icon">
+                        <i className="fa-solid fa-magnifying-glass" />
+                      </div>
+                      <input
+                        autoFocus=true
+                        className="search-field-input"
+                        placeholder="Search"
+                        type_="text"
+                        onChange={e =>
+                          setSearchStr(_ => ReactEvent.Form.target(e)##value)
+                        }
+                        value=searchStr
+                      />
+                    </div>
+                    <div className="search-list-separator" />
+                    <VirtualizedList
+                      rowRenderer
+                      rowCount=filteredListLen
+                      width=230
+                      rowHeight
+                      height={min(400, filteredListLen * rowHeight)}
+                      scrollToIndex=boundedFocusIndex
+                      overscanRowCount=25
+                    />
+                  </>
+                | RemoteData.Fail(err) =>
+                  <div className="error-panel">
+                    <p> {React.string(err)} </p>
+                  </div>
+                }}
              </div>
            : React.null}
       </div>
