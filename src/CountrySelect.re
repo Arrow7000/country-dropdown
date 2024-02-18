@@ -24,6 +24,7 @@ module CountrySelect = {
       |> then_(json => {countryArrayDecoder(json) |> resolve})
     );
 
+  let rowHeight = 28;
   let buttonHeight = 26;
 
   let numberFormatter =
@@ -47,9 +48,21 @@ module CountrySelect = {
 
     let (searchStr, setSearchStr) = React.useState(_ => "");
 
-    // The index of the items in the dropdown that is "selected"
     let (focusedInDropdownIndex, setFocusedInDropdownIndex) =
       React.useState(_ => 0);
+
+    // Reset all the states
+    let closeDropdown = () => {
+      setIsOpen(_ => false);
+      setSearchStr(_ => "");
+      setFocusedInDropdownIndex(_ => 0);
+    };
+
+    // Select country and reset all the states
+    let selectCountry = (entry: countryEntry) => {
+      onChange(Some(entry.value));
+      closeDropdown();
+    };
 
     React.useEffect1(
       () => {
@@ -85,8 +98,8 @@ module CountrySelect = {
       [||],
     );
 
-    // The full entry of the currently set country as set in the country prop
-    let currentCountryEntry =
+    // The full entry of the currently set country, as set in the country prop
+    let currentCountryEntry: option(countryEntry) =
       React.useMemo2(
         () => {
           switch (country) {
@@ -103,41 +116,45 @@ module CountrySelect = {
         (country, countriesList),
       );
 
-    let rowHeight = 28;
-
+    // Filtered by the search string
     let filteredList =
-      switch (countriesList) {
-      | Some(list) =>
-        switch (searchStr) {
-        | "" => list
-        | _ =>
-          List.filter(
-            countryEntry => {
-              let containsStr = str =>
-                Js.String.includes(
-                  String.lowercase_ascii(searchStr),
-                  String.lowercase_ascii(str),
-                );
+      React.useMemo2(
+        () => {
+          switch (countriesList) {
+          | Some(list) =>
+            switch (searchStr) {
+            | "" => list
+            | _ =>
+              List.filter(
+                countryEntry => {
+                  let containsStr = str =>
+                    Js.String.includes(
+                      String.lowercase_ascii(searchStr),
+                      String.lowercase_ascii(str),
+                    );
 
-              containsStr(countryEntry.label)
-              || containsStr(countryEntry.value);
-            },
-            list,
-          )
-        }
-      | None => []
-      };
+                  containsStr(countryEntry.label)
+                  || containsStr(countryEntry.value);
+                },
+                list,
+              )
+            }
+          | None => []
+          }
+        },
+        (countriesList, searchStr),
+      );
 
     let filteredListLen = List.length(filteredList);
 
-    let rec boundAndModIndex = (index: int) =>
-      index == 0
+    let rec boundFocusIndex = (index: int) =>
+      filteredListLen == 0
         ? 0
         : index < 0
-            ? boundAndModIndex(filteredListLen + index)
+            ? boundFocusIndex(filteredListLen + index)
             : index mod filteredListLen;
 
-    let boundedAndModdedFocusIndex = boundAndModIndex(focusedInDropdownIndex);
+    let boundedFocusIndex = boundFocusIndex(focusedInDropdownIndex);
 
     let focusedInDropdownEntryOpt =
       switch (filteredListLen) {
@@ -145,7 +162,7 @@ module CountrySelect = {
         // To prevent divide by zero errors
         None
 
-      | _ => List.nth_opt(filteredList, boundedAndModdedFocusIndex)
+      | _ => List.nth_opt(filteredList, boundedFocusIndex)
       };
 
     // For easier comparisons
@@ -154,36 +171,28 @@ module CountrySelect = {
       |> Option.map(entry => entry.value)
       |> Option.value(~default="");
 
-    let focusedValue =
-      focusedInDropdownEntryOpt
-      |> Option.map(entry => entry.value)
-      |> Option.value(~default="");
-
-    Js.log4(
-      filteredList,
-      focusedInDropdownIndex,
-      focusedInDropdownEntryOpt,
-      focusedValue,
-    );
-
-    React.useEffect1(
+    // @TODO: now that we change the focused item every time we mouse over one of the options, we should probably optimise this so we're not running this effect on every render. Probably doing something like https://stackoverflow.com/questions/63224151/how-can-i-access-state-in-an-useeffect-without-re-firing-the-useeffect
+    React.useEffect2(
       () => {
-        let enterHandler: ReactEvent.Keyboard.t => unit =
+        let keypressHandler: ReactEvent.Keyboard.t => unit =
           event => {
             let key = ReactEvent.Keyboard.key(event);
-            Js.log(key);
 
             switch (key) {
-            | "ArrowUp" => setFocusedInDropdownIndex(curr => curr - 1)
-            | "ArrowDown" => setFocusedInDropdownIndex(curr => curr + 1)
+            | "ArrowUp" =>
+              setFocusedInDropdownIndex(curr => curr - 1);
+              ReactEvent.Keyboard.preventDefault(event);
+
+            | "ArrowDown" =>
+              setFocusedInDropdownIndex(curr => curr + 1);
+              ReactEvent.Keyboard.preventDefault(event);
 
             | "Enter" =>
               switch (focusedInDropdownEntryOpt) {
               | Some(focused) =>
-                Js.log(focused);
-                onChange(Some(focused.value));
-                setIsOpen(_ => false);
-                setSearchStr(_ => "");
+                selectCountry(focused);
+                ReactEvent.Keyboard.preventDefault(event);
+
               | None => ()
               }
 
@@ -191,17 +200,24 @@ module CountrySelect = {
             };
           };
 
-        EventListener.add_keyboard_event_listener("keyup", enterHandler);
+        if (isOpen) {
+          EventListener.add_keyboard_event_listener(
+            "keydown",
+            keypressHandler,
+          );
 
-        Some(
-          () =>
-            EventListener.remove_keyboard_event_listener(
-              "keyup",
-              enterHandler,
-            ),
-        );
+          Some(
+            () =>
+              EventListener.remove_keyboard_event_listener(
+                "keydown",
+                keypressHandler,
+              ),
+          );
+        } else {
+          None;
+        };
       },
-      [|focusedInDropdownEntryOpt|],
+      (focusedInDropdownEntryOpt, isOpen),
     );
 
     let rowRenderer: VirtualizedList.rowRenderer =
@@ -215,13 +231,10 @@ module CountrySelect = {
           className={
             "option"
             ++ (thisCountryEntry.value == selectedValue ? " selected" : "")
-            ++ (thisCountryEntry.value == focusedValue ? " focused" : "")
+            ++ (index == boundedFocusIndex ? " focused" : "")
           }
-          key={countryEntry.value}
-          onClick={_ => {
-            onChange(Some(thisCountryEntry.value));
-            setIsOpen(_ => false);
-          }}>
+          onPointerEnter={_ => setFocusedInDropdownIndex(_ => index)}
+          onClick={_ => selectCountry(thisCountryEntry)}>
           <>
             <div className="option-flag">
               <span className={"fi fib fi-" ++ thisCountryEntry.value} />
@@ -266,6 +279,7 @@ module CountrySelect = {
                    <i className="fa-solid fa-magnifying-glass" />
                  </div>
                  <input
+                   autoFocus=true
                    className="search-field-input"
                    placeholder="Search"
                    type_="text"
@@ -282,7 +296,8 @@ module CountrySelect = {
                  width=230
                  rowHeight
                  height={min(400, filteredListLen * rowHeight)}
-                 scrollToIndex=boundedAndModdedFocusIndex
+                 scrollToIndex=boundedFocusIndex
+                 overscanRowCount=25
                />
              </div>
            : React.null}

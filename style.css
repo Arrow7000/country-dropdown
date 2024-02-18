@@ -100,6 +100,9 @@ p {
   padding: 6px;
   flex-grow: 1;
   border: none;
+  &:focus {
+    outline: none;
+  }
 }
 
 .search-list-separator {
@@ -120,6 +123,7 @@ p {
   padding: 6px;
   overflow-y: hidden;
 
+  &:hover,
   &.focused {
     background-color: #ffdbb355;
   }

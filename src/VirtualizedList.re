@@ -16,7 +16,8 @@ external make:
     ~rowRenderer: rowRenderer,
     ~width: int,
     ~height: int,
-    ~scrollToIndex: int=?
+    ~scrollToIndex: int=?,
+    ~overscanRowCount: int=?
   ) =>
   React.element =
   "List";
