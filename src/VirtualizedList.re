@@ -15,7 +15,8 @@ external make:
     ~rowHeight: int,
     ~rowRenderer: rowRenderer,
     ~width: int,
-    ~height: int
+    ~height: int,
+    ~scrollToIndex: int=?
   ) =>
   React.element =
   "List";

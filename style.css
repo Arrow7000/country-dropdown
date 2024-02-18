@@ -80,6 +80,32 @@ p {
   box-shadow: 0px 3px 18px 0px #00000026, 0px 0px 0px 1px #00000014;
 
   border-radius: 2px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+}
+
+.search-icon {
+  padding: 2px;
+}
+
+.search-field-input {
+  padding: 6px;
+  flex-grow: 1;
+  border: none;
+}
+
+.search-list-separator {
+  margin: 4px 0;
+  height: 1px;
+  background-color: #00000014;
 }
 
 .option {
@@ -93,13 +119,13 @@ p {
   gap: 10px;
   padding: 6px;
   overflow-y: hidden;
-  &.selected {
-    background-color: #ffdbb3;
+
+  &.focused {
+    background-color: #ffdbb355;
   }
 
-  &:hover,
-  &:focus {
-    background-color: #ffdbb355;
+  &.selected {
+    background-color: #ffdbb3;
   }
 
   .option-text {

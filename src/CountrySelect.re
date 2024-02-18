@@ -1,15 +1,11 @@
 module CountrySelect = {
-  let makeResolvingPromise = (callback, ms) => {
-    Js.Global.setTimeout(callback, ms) |> ignore;
-  };
-
-  let countriesUrl = "https://gist.githubusercontent.com/rusty-key/659db3f4566df459bd59c8a53dc9f71f/raw/4127f9550ef063121c564025f6d27dceeb279623/counties.json";
-
   type countryEntry = {
     label: string,
     value: string,
     count: int,
   };
+
+  let countriesUrl = "https://gist.githubusercontent.com/rusty-key/659db3f4566df459bd59c8a53dc9f71f/raw/4127f9550ef063121c564025f6d27dceeb279623/counties.json";
 
   let entryDecoder = json => {
     Json.Decode.{
@@ -30,34 +26,50 @@ module CountrySelect = {
 
   let buttonHeight = 26;
 
+  let numberFormatter =
+    NumberFormat.createFormatter(
+      ~locale=NumberFormat.locale,
+      ~options={notation: Some("compact")},
+    );
+
+  let numFormat = numberFormatter.format;
+
   [@react.component]
   let make =
       (
         ~className: string="",
-        ~selectedCountry: option(string),
-        ~onChange: option(string) => unit=_ => (),
+        ~country: option(string),
+        ~onChange: option(string) => unit,
       ) => {
     let (isOpen, setIsOpen) = React.useState(_ => false);
 
     let (countriesList, setCountriesList) = React.useState(_ => None);
+
+    let (searchStr, setSearchStr) = React.useState(_ => "");
+
+    // The index of the items in the dropdown that is "selected"
+    let (focusedInDropdownIndex, setFocusedInDropdownIndex) =
+      React.useState(_ => 0);
 
     React.useEffect1(
       () => {
         Js.Promise.(
           requestEntries()
           |> then_(array => {
-               // This does a sneaky in-place sort, so we're mutating `array` here
-               Array.sort(
-                 (a, b) => {
-                   let aCount = a.count;
-                   let bCount = b.count;
-                   // We're displaying this with the highest count at the top
-                   aCount < bCount ? 1 : aCount > bCount ? (-1) : 0;
-                 },
-                 array,
-               );
+               let list = array |> Array.to_list;
 
-               setCountriesList(_ => Some(array));
+               let sorted =
+                 List.sort(
+                   (a, b) => {
+                     let aCount = a.count;
+                     let bCount = b.count;
+                     // We're displaying this with the highest count at the top
+                     aCount < bCount ? 1 : aCount > bCount ? (-1) : 0;
+                   },
+                   list,
+                 );
+
+               setCountriesList(_ => Some(sorted));
                resolve();
              })
           |> catch(_ => {
@@ -73,85 +85,168 @@ module CountrySelect = {
       [||],
     );
 
-    let selectedEntry =
+    // The full entry of the currently set country as set in the country prop
+    let currentCountryEntry =
       React.useMemo2(
         () => {
-          switch (selectedCountry) {
+          switch (country) {
           | None => None
           | Some(countryCode) =>
             Option.bind(countriesList, list => {
-              Array.find_opt(
+              List.find_opt(
                 countryEntry => countryEntry.value == countryCode,
                 list,
               )
             })
           }
         },
-        (selectedCountry, countriesList),
+        (country, countriesList),
       );
-
-    // For easier comparisons
-    let selectedValue =
-      selectedEntry
-      |> Option.map(entry => entry.value)
-      |> Option.value(~default="");
-
-    let numberFormatter =
-      NumberFormat.createFormatter(
-        ~locale=NumberFormat.locale,
-        ~options={notation: Some("compact")},
-      );
-
-    let numFormat = numberFormatter.format;
 
     let rowHeight = 28;
 
-    let rowRenderer: VirtualizedList.rowRenderer =
-      ({key, index, style, _}) => {
-        switch (countriesList) {
-        | Some(list) =>
-          let countryEntry = list[index];
+    let filteredList =
+      switch (countriesList) {
+      | Some(list) =>
+        switch (searchStr) {
+        | "" => list
+        | _ =>
+          List.filter(
+            countryEntry => {
+              let containsStr = str =>
+                Js.String.includes(
+                  String.lowercase_ascii(searchStr),
+                  String.lowercase_ascii(str),
+                );
 
-          <div
-            key
-            style
-            tabIndex=(-1)
-            className={
-              "option "
-              ++ (countryEntry.value == selectedValue ? "selected" : "")
-            }
-            key={countryEntry.value}
-            onClick={_ => {
-              onChange(Some(countryEntry.value));
-              setIsOpen(_ => false);
-            }}>
-            <>
-              <div className="option-flag">
-                <span className={"fi fib fi-" ++ countryEntry.value} />
-              </div>
-              <p className="option-text">
-                {React.string(countryEntry.label)}
-              </p>
-              <p className="option-count">
-                {countryEntry.count |> numFormat |> React.string}
-              </p>
-            </>
-          </div>;
-        | None => React.null
-        };
+              containsStr(countryEntry.label)
+              || containsStr(countryEntry.value);
+            },
+            list,
+          )
+        }
+      | None => []
       };
 
-    <div className={"countrySelect " ++ className}>
+    let filteredListLen = List.length(filteredList);
+
+    let rec boundAndModIndex = (index: int) =>
+      index == 0
+        ? 0
+        : index < 0
+            ? boundAndModIndex(filteredListLen + index)
+            : index mod filteredListLen;
+
+    let boundedAndModdedFocusIndex = boundAndModIndex(focusedInDropdownIndex);
+
+    let focusedInDropdownEntryOpt =
+      switch (filteredListLen) {
+      | 0 =>
+        // To prevent divide by zero errors
+        None
+
+      | _ => List.nth_opt(filteredList, boundedAndModdedFocusIndex)
+      };
+
+    // For easier comparisons
+    let selectedValue =
+      currentCountryEntry
+      |> Option.map(entry => entry.value)
+      |> Option.value(~default="");
+
+    let focusedValue =
+      focusedInDropdownEntryOpt
+      |> Option.map(entry => entry.value)
+      |> Option.value(~default="");
+
+    Js.log4(
+      filteredList,
+      focusedInDropdownIndex,
+      focusedInDropdownEntryOpt,
+      focusedValue,
+    );
+
+    React.useEffect1(
+      () => {
+        let enterHandler: ReactEvent.Keyboard.t => unit =
+          event => {
+            let key = ReactEvent.Keyboard.key(event);
+            Js.log(key);
+
+            switch (key) {
+            | "ArrowUp" => setFocusedInDropdownIndex(curr => curr - 1)
+            | "ArrowDown" => setFocusedInDropdownIndex(curr => curr + 1)
+
+            | "Enter" =>
+              switch (focusedInDropdownEntryOpt) {
+              | Some(focused) =>
+                Js.log(focused);
+                onChange(Some(focused.value));
+                setIsOpen(_ => false);
+                setSearchStr(_ => "");
+              | None => ()
+              }
+
+            | _ => ()
+            };
+          };
+
+        EventListener.add_keyboard_event_listener("keyup", enterHandler);
+
+        Some(
+          () =>
+            EventListener.remove_keyboard_event_listener(
+              "keyup",
+              enterHandler,
+            ),
+        );
+      },
+      [|focusedInDropdownEntryOpt|],
+    );
+
+    let rowRenderer: VirtualizedList.rowRenderer =
+      ({key, index, style, _}) => {
+        let thisCountryEntry = List.nth(filteredList, index);
+
+        <div
+          key
+          style
+          tabIndex=(-1)
+          className={
+            "option"
+            ++ (thisCountryEntry.value == selectedValue ? " selected" : "")
+            ++ (thisCountryEntry.value == focusedValue ? " focused" : "")
+          }
+          key={countryEntry.value}
+          onClick={_ => {
+            onChange(Some(thisCountryEntry.value));
+            setIsOpen(_ => false);
+          }}>
+          <>
+            <div className="option-flag">
+              <span className={"fi fib fi-" ++ thisCountryEntry.value} />
+            </div>
+            <p className="option-text">
+              {React.string(thisCountryEntry.label)}
+            </p>
+            <p className="option-count">
+              {thisCountryEntry.count |> numFormat |> React.string}
+            </p>
+          </>
+        </div>;
+      };
+
+    <div className={"country-select " ++ className}>
       <button
         className="button"
         onClick={_ => setIsOpen(open_ => !open_)}
         style={ReactDOM.Style.make(
           ~minWidth=?
-            Option.is_none(selectedEntry)
+            Option.is_none(currentCountryEntry)
               ? Some("var(--emptyButtonWidth)") : None,
           (),
         )}>
-        {switch (selectedEntry) {
+        {switch (currentCountryEntry) {
          | Some(entry) =>
            <div className="button-selected">
              <div className="button-flag">
@@ -166,21 +261,29 @@ module CountrySelect = {
       <div className="dropdown-position-container">
         {isOpen
            ? <div className="dropdown-panel">
-               {switch (countriesList) {
-                | Some(list) =>
-                  <VirtualizedList
-                    rowRenderer
-                    rowCount={Array.length(list)}
-                    width=230
-                    rowHeight
-                    height={min(400, Array.length(list) * rowHeight)}
-                  />
-                | None =>
-                  // @TODO: make this look good
-                  <div className="no-results">
-                    {React.string("No countries found")}
-                  </div>
-                }}
+               <div className="search-field">
+                 <div className="search-icon">
+                   <i className="fa-solid fa-magnifying-glass" />
+                 </div>
+                 <input
+                   className="search-field-input"
+                   placeholder="Search"
+                   type_="text"
+                   onChange={e =>
+                     setSearchStr(_ => ReactEvent.Form.target(e)##value)
+                   }
+                   value=searchStr
+                 />
+               </div>
+               <div className="search-list-separator" />
+               <VirtualizedList
+                 rowRenderer
+                 rowCount=filteredListLen
+                 width=230
+                 rowHeight
+                 height={min(400, filteredListLen * rowHeight)}
+                 scrollToIndex=boundedAndModdedFocusIndex
+               />
              </div>
            : React.null}
       </div>
