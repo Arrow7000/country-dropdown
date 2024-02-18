@@ -332,15 +332,22 @@ module CountrySelect = {
                       />
                     </div>
                     <div className="search-list-separator" />
-                    <VirtualizedList
-                      rowRenderer
-                      rowCount=filteredListLen
-                      width=230
-                      rowHeight
-                      height={min(400, filteredListLen * rowHeight)}
-                      scrollToIndex=boundedFocusIndex
-                      overscanRowCount=25
-                    />
+                    {switch (filteredList) {
+                     | [] =>
+                       <div className="no-results-panel">
+                         <p> {React.string("No results")} </p>
+                       </div>
+                     | _ =>
+                       <VirtualizedList
+                         rowRenderer
+                         rowCount=filteredListLen
+                         width=230
+                         rowHeight
+                         height={min(400, filteredListLen * rowHeight)}
+                         scrollToIndex=boundedFocusIndex
+                         overscanRowCount=25
+                       />
+                     }}
                   </>
                 | RemoteData.Fail(err) =>
                   <div className="error-panel">

@@ -113,6 +113,7 @@
   }
 }
 
+.no-results-panel,
 .loading-panel,
 .error-panel {
   display: flex;
@@ -123,6 +124,12 @@
 
   p {
     margin: 50px 0;
+  }
+}
+
+.no-results-panel {
+  p {
+    margin: 25px 0;
   }
 }
 
