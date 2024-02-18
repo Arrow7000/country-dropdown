@@ -1,13 +1,6 @@
 (library
  (name app)
  (modes melange)
- (libraries
-  bindings
-  cma_configuration
-  components
-  reason-react
-  melange-fetch
-  melange-json
-  melange-webapi)
+ (libraries reason-react melange-fetch melange-json melange-webapi)
  (preprocess
   (pps melange.ppx reason-react-ppx)))
