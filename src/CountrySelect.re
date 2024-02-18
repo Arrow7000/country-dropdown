@@ -25,15 +25,20 @@ module CountrySelect = {
     );
 
   let rowHeight = 28;
-  let buttonHeight = 26;
 
   let numberFormatter =
     NumberFormat.createFormatter(
       ~locale=NumberFormat.locale,
       ~options={notation: Some("compact")},
     );
-
   let numFormat = numberFormatter.format;
+
+  // Map any integer to a valid list index (or 0, if list is empty)
+  let rec boundToListLenIndex = (index: int, listLen: int) =>
+    listLen == 0
+      ? 0
+      : index < 0
+          ? boundToListLenIndex(listLen + index, listLen) : index mod listLen;
 
   [@react.component]
   let make =
@@ -44,12 +49,25 @@ module CountrySelect = {
       ) => {
     let (isOpen, setIsOpen) = React.useState(_ => false);
 
-    let (countriesList, setCountriesList) = React.useState(_ => None);
+    let (countriesList, setCountriesList) =
+      React.useState(_ => RemoteData.NotAsked);
 
     let (searchStr, setSearchStr) = React.useState(_ => "");
 
     let (focusedInDropdownIndex, setFocusedInDropdownIndex) =
       React.useState(_ => 0);
+
+    // We do this so we can avoid running the effect that sets the keyboard event handlers every time we hover over a different option. Inspired by: https://stackoverflow.com/a/63261270/3229534
+    let focusedIndexRef = React.useRef(focusedInDropdownIndex);
+
+    // Keep the ref in sync with state
+    React.useEffect1(
+      () => {
+        focusedIndexRef.current = focusedInDropdownIndex;
+        None;
+      },
+      [|focusedInDropdownIndex|],
+    );
 
     // Reset all the states
     let closeDropdown = () => {
@@ -66,6 +84,8 @@ module CountrySelect = {
 
     React.useEffect1(
       () => {
+        setCountriesList(_ => RemoteData.Loading);
+
         Js.Promise.(
           requestEntries()
           |> then_(array => {
@@ -82,12 +102,16 @@ module CountrySelect = {
                    list,
                  );
 
-               setCountriesList(_ => Some(sorted));
+               setCountriesList(_ => RemoteData.Success(sorted));
                resolve();
              })
           |> catch(_ => {
                // @TODO: might want to use a Result type instead of an option here – or even better, something like the Elm RemoteData type
-               resolve()
+
+               setCountriesList(_ =>
+                 RemoteData.Fail("Request or parsing failed")
+               );
+               resolve();
              })
         )
         |> ignore;
@@ -105,12 +129,14 @@ module CountrySelect = {
           switch (country) {
           | None => None
           | Some(countryCode) =>
-            Option.bind(countriesList, list => {
-              List.find_opt(
-                countryEntry => countryEntry.value == countryCode,
-                list,
-              )
-            })
+            countriesList
+            |> RemoteData.toOption
+            |> Option.bind(_, list => {
+                 List.find_opt(
+                   countryEntry => countryEntry.value == countryCode,
+                   list,
+                 )
+               })
           }
         },
         (country, countriesList),
@@ -121,7 +147,7 @@ module CountrySelect = {
       React.useMemo2(
         () => {
           switch (countriesList) {
-          | Some(list) =>
+          | RemoteData.Success(list) =>
             switch (searchStr) {
             | "" => list
             | _ =>
@@ -139,31 +165,13 @@ module CountrySelect = {
                 list,
               )
             }
-          | None => []
+          | _ => []
           }
         },
         (countriesList, searchStr),
       );
 
     let filteredListLen = List.length(filteredList);
-
-    let rec boundFocusIndex = (index: int) =>
-      filteredListLen == 0
-        ? 0
-        : index < 0
-            ? boundFocusIndex(filteredListLen + index)
-            : index mod filteredListLen;
-
-    let boundedFocusIndex = boundFocusIndex(focusedInDropdownIndex);
-
-    let focusedInDropdownEntryOpt =
-      switch (filteredListLen) {
-      | 0 =>
-        // To prevent divide by zero errors
-        None
-
-      | _ => List.nth_opt(filteredList, boundedFocusIndex)
-      };
 
     // For easier comparisons
     let selectedValue =
@@ -173,8 +181,7 @@ module CountrySelect = {
 
     let elRef = Helpers.useClickOutside(_ => closeDropdown(), [||]);
 
-    // @TODO: now that we change the focused item every time we mouse over one of the options, we should probably optimise this so we're not running this effect on every render. Probably doing something like https://stackoverflow.com/questions/63224151/how-can-i-access-state-in-an-useeffect-without-re-firing-the-useeffect
-    React.useEffect2(
+    React.useEffect3(
       () => {
         let keypressHandler: ReactEvent.Keyboard.t => unit =
           event => {
@@ -194,13 +201,26 @@ module CountrySelect = {
               ReactEvent.Keyboard.preventDefault(event);
 
             | "Enter" =>
-              switch (focusedInDropdownEntryOpt) {
+              let boundedFocusIndex_ =
+                boundToListLenIndex(
+                  // Accessing a ref here means we don't need to re-run this effect every time the focusedInDropdownIndex state changes – which is every time we hover over an option, so this makes quite a difference to performance
+                  focusedIndexRef.current,
+                  filteredListLen,
+                );
+
+              let focusedEntryOpt =
+                switch (filteredListLen) {
+                | 0 => None
+                | _ => List.nth_opt(filteredList, boundedFocusIndex_)
+                };
+
+              switch (focusedEntryOpt) {
               | Some(focused) =>
                 selectCountry(focused);
                 ReactEvent.Keyboard.preventDefault(event);
 
               | None => ()
-              }
+              };
 
             | _ => ()
             };
@@ -223,8 +243,11 @@ module CountrySelect = {
           None;
         };
       },
-      (focusedInDropdownEntryOpt, isOpen),
+      (filteredList, filteredListLen, isOpen),
     );
+
+    let boundedFocusIndex =
+      boundToListLenIndex(focusedInDropdownIndex, filteredListLen);
 
     let rowRenderer: VirtualizedList.rowRenderer =
       ({key, index, style, _}) => {
@@ -263,8 +286,7 @@ module CountrySelect = {
         onClick={_ => setIsOpen(open_ => !open_)}
         style={ReactDOM.Style.make(
           ~minWidth=?
-            Option.is_none(currentCountryEntry)
-              ? Some("var(--emptyButtonWidth)") : None,
+            Option.is_none(currentCountryEntry) ? Some("150px") : None,
           (),
         )}>
         {switch (currentCountryEntry) {

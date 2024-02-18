@@ -1,0 +1,112 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: end;
+  gap: 10px;
+
+  height: 26px;
+  font-size: 1rem;
+
+  border-width: 1px;
+  border-style: solid;
+  border-color: #00000033;
+  border-radius: 3px;
+  min-width: 150px;
+  cursor: pointer;
+  padding: 0 10px;
+  background-color: white;
+  &:hover {
+    border-color: #00000055;
+  }
+
+  .button-selected {
+    display: flex;
+    gap: 10px;
+    flex-grow: 1;
+  }
+
+  .button-flag {
+    max-width: 14px;
+  }
+}
+
+.dropdown-position-container {
+  position: relative;
+}
+
+.dropdown-panel {
+  background-color: white;
+  position: absolute;
+  top: 3px;
+  box-shadow: 0px 3px 18px 0px #00000026, 0px 0px 0px 1px #00000014;
+
+  border-radius: 2px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+}
+
+.search-icon {
+  padding: 2px;
+}
+
+.search-field-input {
+  padding: 6px;
+  flex-grow: 1;
+  border: none;
+  &:focus {
+    outline: none;
+  }
+}
+
+.search-list-separator {
+  margin: 4px 0;
+  height: 1px;
+  background-color: #00000014;
+}
+
+.option {
+  white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  overflow-y: hidden;
+
+  &:hover,
+  &.focused {
+    background-color: #ffdbb355;
+  }
+
+  &.selected {
+    background-color: #ffdbb3;
+  }
+
+  .option-text {
+    white-space: nowrap;
+    overflow-x: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+  }
+
+  .option-count {
+    color: #00000085;
+  }
+}
+
+/* Flags styling */
+.fi.fib {
+  width: 14px;
+  aspect-ratio: 1;
+}
