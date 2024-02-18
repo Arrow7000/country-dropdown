@@ -2,13 +2,12 @@
 opam-version: "2.0"
 synopsis: "Enter a synopsis of your app here"
 description: "Enter a description of your app here"
-maintainer: ["Your Name <your.email@gmail.com>"]
-authors: ["Your Name <your.email@gmail.com>"]
+authors: ["Aron Adler <aron@adler.dev>"]
 license: "MIT"
 tags: ["reasonml," "ocaml," "melange"]
-homepage: "https://github.com/your-username/ahrefs_project"
-doc: "https://github.com/your-username/ahrefs_project"
-bug-reports: "https://github.com/your-username/ahrefs_project/issues"
+homepage: "https://github.com/Arrow7000/country-dropdown"
+doc: "https://github.com/Arrow7000/country-dropdown"
+bug-reports: "https://github.com/Arrow7000/country-dropdown/issues"
 depends: [
   "dune" {>= "3.11" & >= "3.11"}
   "melange" {>= "2.1.0"}
@@ -18,6 +17,9 @@ depends: [
   "reason" {>= "3.10.0"}
   "reason-react" {>= "0.13.0"}
   "reason-react-ppx"
+  "melange-fetch"
+  "melange-json"
+  "melange-webapi"
   "odoc" {with-doc}
 ]
 build: [
@@ -34,4 +36,4 @@ build: [
     "@doc" {with-doc}
   ]
 ]
-dev-repo: "git+https://github.com/your-username/ahrefs_project.git"
+dev-repo: "git+https://github.com/Arrow7000/country-dropdown.git"
